@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(rm_hero)
+project(detect)
 
 ## Use C++14
 set(CMAKE_CXX_STANDARD 17)
@@ -31,7 +31,7 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(pluginlib REQUIRED)
-find_package(auto_aim_interfaces REQUIRED)
+
 
 
  
