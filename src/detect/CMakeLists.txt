@@ -1,99 +1,139 @@
 cmake_minimum_required(VERSION 3.8)
 project(detect)
 
-## Use C++14
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
 
-
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-
-# 添加包含路径
-include_directories(
-  ${CMAKE_SOURCE_DIR}/include
-)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CUDA_ARCHITECTURES 80 86 90)
 
 # find dependencies
-find_package(Eigen3 REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(cv_bridge REQUIRED)
-find_package(OpenCV REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_transport REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
-find_package(image_transport REQUIRED)
-find_package(pluginlib REQUIRED)
 
 
+# -------------- OpenCV --------------
+find_package(OpenCV REQUIRED)
 
- 
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    /usr/local/include
-    /usr/include/
-    /usr/include/eigen3
+message(STATUS "OpenCV library status:")
+message(STATUS "    config: ${OpenCV_DIR}")
+message(STATUS "    version: ${OpenCV_VERSION}")
+message(STATUS "    libraries: ${OpenCV_LIBS}")
+message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
+
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+# -------------- libtorch --------------
+# 手动设置CUDA路径（替换为你的实际路径）
+set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.9")
+set(CMAKE_CUDA_COMPILER "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc")
+
+# 显式声明nvToolsExt库
+find_library(NVToolsExt_LIB libnvToolsExt.so PATHS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" REQUIRED)
+add_library(CUDA::nvToolsExt SHARED IMPORTED)
+set_target_properties(CUDA::nvToolsExt PROPERTIES IMPORTED_LOCATION ${NVToolsExt_LIB})
+
+list(APPEND CMAKE_PREFIX_PATH "/home/ake/libtorch")
+set(Torch_DIR "/home/ake/libtorch/share/cmake/Torch")
+
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+include_directories(${TORCH_INCLUDE_DIRS})
+
+# 设置 rpath 以便在运行时找到 PyTorch 库
+set(CMAKE_INSTALL_RPATH "/home/ake/libtorch/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# Include directories
+include_directories(include)
+
+# Create ament index resource which references the libraries in the binary dir
+set(node_plugins "")
+
+# Add library for detect_node
+add_library(detect_node_component SHARED
+  src/detect_node.cpp
+  src/detector.cpp
 )
- 
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
-include_directories(${CMAKE_SOURCE_DIR}/include/rm_hero)
+target_compile_definitions(detect_node_component PRIVATE "COMPOSITION_BUILDING_DLL")
 
-add_library(${PROJECT_NAME} SHARED
-  src/rm_hero_node.cpp
-)
-ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_components sensor_msgs geometry_msgs cv_bridge OpenCV tf2 tf2_ros image_transport tf2_geometry_msgs auto_aim_interfaces)
- 
-target_link_directories(${PROJECT_NAME} PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-      $<INSTALL_INTERFACE:include>)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
-
-rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN qianli_rm_hero::HeroNode
-  EXECUTABLE ${PROJECT_NAME}_node
+ament_target_dependencies(detect_node_component
+  rclcpp
+  rclcpp_components
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+  cv_bridge
+  image_transport
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
 )
 
+target_link_libraries(detect_node_component ${TORCH_LIBRARIES} ${OpenCV_LIBS})
 
+rclcpp_components_register_nodes(detect_node_component "detect::Detect")
+set(node_plugins "${node_plugins}detect::Detect;$<TARGET_FILE:detect_node_component>\n")
 
-
+# Install targets
 install(TARGETS
-  ${PROJECT_NAME}
+  detect_node_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
-  DESTINATION lib/${PROJECT_NAME}
 )
 
-# install(FILES plugins.xml
-#   DESTINATION share/${PROJECT_NAME}
-# )
+# Install headers
+install(DIRECTORY include/
+  DESTINATION include/
+)
 
-
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}/
+# Install launch files
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch/
 )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# Export dependencies
+ament_export_include_directories(include)
+ament_export_libraries(detect_node_component)
+ament_export_dependencies(
+  rclcpp
+  rclcpp_components
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+  cv_bridge
+  image_transport
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+)
 
 ament_package()
