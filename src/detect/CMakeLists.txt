@@ -75,6 +75,7 @@ set(node_plugins "")
 add_library(detect_node_component SHARED
   src/detect_node.cpp
   src/detector.cpp
+  src/reid.cpp
 )
 
 target_compile_definitions(detect_node_component PRIVATE "COMPOSITION_BUILDING_DLL")

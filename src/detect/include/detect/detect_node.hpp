@@ -16,6 +16,7 @@
 
 
 #include "detect/detector.hpp"
+#include "detect/reid.hpp"
 
 
 #include <tf2_ros/buffer.h>
@@ -43,21 +44,41 @@ public:
 
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr rgb_raw_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr depth_raw_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
 
     void rgb_raw_callback(const sensor_msgs::msg::Image::SharedPtr msg);
     void depth_raw_callback(const sensor_msgs::msg::Image::SharedPtr msg);
 
     YoloPoseDetector detector_;
+    ReID reid_;
 
     cv::Mat raw_image;
+    cv::Mat depth_image;
     std::vector<YoloPoseDetector::PersonDetection> persons_results;
+    
+    // 跟踪目标特征
+    torch::Tensor target_feature;
+    bool has_target_feature = false;
+    cv::Point2f target_position; // 目标位置
 
+    // 深度图像和相机内参
+    bool depth_image_available = false;
+    
+    // 相机内参 (需要根据实际相机参数设置)
+    double fx = 640.0; // 焦距x
+    double fy = 640.0; // 焦距y  
+    double cx = 320.0; // 主点x
+    double cy = 240.0; // 主点y
 
     // 帧率计算相关变量
     std::chrono::steady_clock::time_point last_frame_time_;
     double fps_;
     int frame_count_;
     std::chrono::steady_clock::time_point fps_start_time_;
+    
+private:
+    // 将2D像素坐标转换为3D世界坐标
+    geometry_msgs::msg::PointStamped pixel_to_3d(const cv::Point2f& pixel, float depth);
 };
 
 

@@ -1,5 +1,5 @@
 // reid.cpp
-#include "reid.hpp"
+#include "detect/reid.hpp"
 #include <iostream>
 
 ReID::ReID(const std::string& model_path, bool use_gpu)
