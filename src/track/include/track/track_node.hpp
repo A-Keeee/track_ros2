@@ -33,20 +33,26 @@ class Track : public rclcpp::Node
 {
 public:
     Track(const rclcpp::NodeOptions & options);
+    
     ~Track();
 
-    // 发布者
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr track_pose_pub_;
 
-    rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr detector_pose_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr raw_pose_sub_;
 
+    // EKF实例
+    std::unique_ptr<EnhancedEKF3D> ekf_;
+    
+    // 目标丢失处理
+    int lost_frame_count_;
+    int max_lost_frames_;
 
-    void raw_pose_callback(const sensor_msgs::msg::Image::SharedPtr msg);
+    void raw_pose_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
 
 
 };
 
 
-} // namespace detect
+} 
 
 #endif 

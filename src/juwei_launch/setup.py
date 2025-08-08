@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-package_name = 'track_launch'
+package_name = 'juwei_launch'
 
 setup(
     name=package_name,

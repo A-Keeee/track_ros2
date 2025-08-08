@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(detect)
+project(track)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -44,6 +44,13 @@ message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+
+
+# -------------- Eigen3 --------------
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
+
 # -------------- libtorch --------------
 # 手动设置CUDA路径（替换为你的实际路径）
 set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.9")
@@ -71,16 +78,15 @@ include_directories(include)
 # Create ament index resource which references the libraries in the binary dir
 set(node_plugins "")
 
-# Add library for detect_node
-add_library(detect_node_component SHARED
-  src/detect_node.cpp
-  src/detector.cpp
-  src/reid.cpp
+
+add_library(track_node_component SHARED
+  src/track_node.cpp
+  src/ekf.cpp
 )
 
-target_compile_definitions(detect_node_component PRIVATE "COMPOSITION_BUILDING_DLL")
+target_compile_definitions(track_node_component PRIVATE "COMPOSITION_BUILDING_DLL")
 
-ament_target_dependencies(detect_node_component
+ament_target_dependencies(track_node_component
   rclcpp
   rclcpp_components
   std_msgs
@@ -93,14 +99,14 @@ ament_target_dependencies(detect_node_component
   tf2_geometry_msgs
 )
 
-target_link_libraries(detect_node_component ${TORCH_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(track_node_component ${TORCH_LIBRARIES} ${OpenCV_LIBS})
 
-rclcpp_components_register_nodes(detect_node_component "detect::Detect")
-set(node_plugins "${node_plugins}detect::Detect;$<TARGET_FILE:detect_node_component>\n")
+rclcpp_components_register_nodes(track_node_component "track::Track")
+set(node_plugins "${node_plugins}track::Track;$<TARGET_FILE:track_node_component>\n")
 
 # Install targets
 install(TARGETS
-  detect_node_component
+  track_node_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -123,7 +129,7 @@ endif()
 
 # Export dependencies
 ament_export_include_directories(include)
-ament_export_libraries(detect_node_component)
+ament_export_libraries(track_node_component)
 ament_export_dependencies(
   rclcpp
   rclcpp_components

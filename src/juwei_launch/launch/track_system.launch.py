@@ -76,6 +76,15 @@ def generate_launch_description():
         extra_arguments=[{'use_intra_process_comms': True}],
     )
 
+    track_node = ComposableNode(
+        package='track',
+        plugin='track::Track',
+        name='track_node',
+        extra_arguments=[{'use_intra_process_comms': True}],
+    )
+
+
+
     # Composable node container for detection
     detect_container = ComposableNodeContainer(
         name='detect_container',
@@ -84,6 +93,7 @@ def generate_launch_description():
         executable='component_container_mt',
         composable_node_descriptions=[
             detect_node,
+            track_node
         ],
         output='both',
     )
