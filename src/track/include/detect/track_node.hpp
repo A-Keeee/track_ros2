@@ -1,7 +1,5 @@
-
-
-#ifndef RM_HERO_NODE_HPP
-#define RM_HERO_NODE_HPP
+#ifndef TRACK_NODE_HPP
+#define TRACK_NODE_HPP
 
 #include <iostream>
 #include <memory> // 新增
