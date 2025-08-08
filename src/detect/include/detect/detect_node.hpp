@@ -71,7 +71,7 @@ public:
     std::vector<torch::Tensor> collected_features; // 收集的特征向量
     std::chrono::steady_clock::time_point feature_collection_start_time; // 特征收集开始时间
     bool collecting_features = false; // 是否正在收集特征
-    static constexpr int MAX_FEATURES = 5; // 最大收集特征数
+    static constexpr int MAX_FEATURES = 10; // 最大收集特征数
     static constexpr int COLLECTION_TIME_SECONDS = 5; // 收集时间(秒)
 
     // 深度图像和相机内参

@@ -62,18 +62,33 @@ namespace detect
 
         if (has_target_feature && !persons_results.empty()) {
             float min_distance = std::numeric_limits<float>::max();
-
+            
+            // 收集所有有效的人员图像进行批处理
+            std::vector<cv::Mat> person_images;
+            std::vector<size_t> valid_indices;
+            
             for (size_t i = 0; i < persons_results.size(); ++i) {
                 const auto& person = persons_results[i];
                 if (person.x < 0 || person.y < 0 || person.x + person.w > raw_image.cols || person.y + person.h > raw_image.rows) {
                     continue; 
                 }
                 cv::Mat person_img = raw_image(cv::Rect(person.x, person.y, person.w, person.h)).clone();
-                torch::Tensor feature = reid_.extract_feature(person_img);
-                float distance = torch::nn::functional::pairwise_distance(feature, target_feature).item<float>();
-                if (distance < min_distance && distance < 1.0f) { 
-                    min_distance = distance;
-                    best_match_index = i;
+                person_images.push_back(person_img);
+                valid_indices.push_back(i);
+            }
+            
+            
+            if (!person_images.empty()) {
+                torch::Tensor batch_features = reid_.extract_features_batch(person_images);
+                
+                // 计算每个人与目标的距离
+                for (size_t j = 0; j < batch_features.size(0); ++j) {
+                    torch::Tensor feature = batch_features[j].unsqueeze(0);
+                    float distance = torch::nn::functional::pairwise_distance(feature, target_feature).item<float>();
+                    if (distance < min_distance && distance < 1.0f) { 
+                        min_distance = distance;
+                        best_match_index = valid_indices[j];
+                    }
                 }
             }
 
@@ -101,7 +116,6 @@ namespace detect
                 auto collection_duration = std::chrono::duration_cast<std::chrono::seconds>(current_time - feature_collection_start_time);
 
                 if (collection_duration.count() <= COLLECTION_TIME_SECONDS && collected_features.size() < MAX_FEATURES && collection_duration.count() - collected_features.size()*0.6 > 0) {
-                    // 在收集时间内且还没收集够特征数量，继续收集
                     cv::Mat person_img = raw_image(cv::Rect(first_person.x, first_person.y, first_person.w, first_person.h)).clone();
                     torch::Tensor feature = reid_.extract_feature(person_img);
                     collected_features.push_back(feature.clone());

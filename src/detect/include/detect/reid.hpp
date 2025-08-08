@@ -30,6 +30,13 @@ public:
      */
     torch::Tensor extract_feature(const cv::Mat& image);
 
+    /**
+     * @brief 批量提取多个行人图像的ReID特征（性能优化）
+     * @param images 输入的多个OpenCV图像向量
+     * @return 返回一个torch::Tensor，包含所有图像的特征向量 [N, feature_dim]
+     */
+    torch::Tensor extract_features_batch(const std::vector<cv::Mat>& images);
+
 private:
     /**
      * @brief 对图像进行预处理，以满足模型输入要求
@@ -37,6 +44,13 @@ private:
      * @return 返回一个预处理后的Tensor
      */
     torch::Tensor preprocess(const cv::Mat& image) const;
+
+    /**
+     * @brief 优化版本的预处理，直接在目标设备上处理
+     * @param image 输入的OpenCV图像
+     * @return 返回一个预处理后的Tensor（已在目标设备上）
+     */
+    torch::Tensor preprocess_optimized(const cv::Mat& image) const;
 
     torch::jit::script::Module module_; // 加载的TorchScript模型
     torch::Device device_;             // 推理设备 (CPU or CUDA)
