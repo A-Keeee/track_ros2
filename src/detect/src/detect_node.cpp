@@ -76,13 +76,21 @@ namespace detect
             std::vector<size_t> valid_indices;
             
             for (size_t i = 0; i < persons_results.size(); ++i) {
-                const auto& person = persons_results[i];
-                if (person.x < 0 || person.y < 0 || person.w < 0 || person.h < 0 || person.x + person.w > raw_image.cols || person.y + person.h > raw_image.rows) {
-                    continue; 
+                auto person = persons_results[i];
+                // 边界修正
+                if (person.x < 0) person.x = 0;
+                if (person.y < 0) person.y = 0;
+                if (person.x >= raw_image.cols || person.y >= raw_image.rows) continue;
+                if (person.x + person.w > raw_image.cols) person.w = raw_image.cols - person.x;
+                if (person.y + person.h > raw_image.rows) person.h = raw_image.rows - person.y;
+                if (person.w <= 0 || person.h <= 0) continue;
+                // 再次检查ROI合法性
+                if (person.x >= 0 && person.y >= 0 && person.w > 0 && person.h > 0 &&
+                    person.x + person.w <= raw_image.cols && person.y + person.h <= raw_image.rows) {
+                    cv::Mat person_img = raw_image(cv::Rect(person.x, person.y, person.w, person.h)).clone();
+                    person_images.push_back(person_img);
+                    valid_indices.push_back(i);
                 }
-                cv::Mat person_img = raw_image(cv::Rect(person.x, person.y, person.w, person.h)).clone();
-                person_images.push_back(person_img);
-                valid_indices.push_back(i);
             }
             
             
