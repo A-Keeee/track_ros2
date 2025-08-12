@@ -9,11 +9,11 @@ namespace track
 
         // 初始化EKF
         ekf_ = std::make_unique<EnhancedEKF3D>(
-            0.1,   // process_noise_std
-            0.2,   // measurement_noise_std
-            0.5,   // initial_velocity_std
-            0.2,   // initial_acceleration_std
-            0.3    // initial_angular_velocity_std
+            0.5,   // process_noise_std
+            10.0,   // measurement_noise_std
+            0.1,   // initial_velocity_std
+            0.1,   // initial_acceleration_std
+            0.1    // initial_angular_velocity_std
         );
         
         // 初始化丢失计数器和阈值

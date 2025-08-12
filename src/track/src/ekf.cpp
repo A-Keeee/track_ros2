@@ -94,13 +94,13 @@ Eigen::VectorXd EnhancedEKF3D::predict(double timestamp) {
     
     // 基于角速度更新速度方向
     double current_speed = std::sqrt(vx * vx + vy * vy);
-    if (current_speed > 0.1) {  // 只有在有显著运动时才应用角速度
+    if (current_speed > 0.3) {  // 只有在有显著运动时才应用角速度
         // 更新水平面速度分量
         double new_vx = current_speed * std::sin(new_theta);
         double new_vy = current_speed * std::cos(new_theta);
         
         // 平滑过渡，避免突变
-        double alpha = 0.7;
+        double alpha = 0.3;
         vx = alpha * new_vx + (1.0 - alpha) * vx;
         vy = alpha * new_vy + (1.0 - alpha) * vy;
     }
