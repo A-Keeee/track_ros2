@@ -4,8 +4,8 @@
 namespace detect
 {
     Detect::Detect(const rclcpp::NodeOptions & options) : Node("detect_node", options),
-        detector_("/home/ake/track_ros2/src/detect/models/yolo11n-pose.torchscript", {640, 640}, 0.5f, 0.7f, 0.5f),
-        reid_("/home/ake/track_ros2/src/detect/models/ReID_resnet50_ibn_a.torchscript", true),
+        detector_("/home/jw/track_ros2/src/detect/models/yolo11n-pose.torchscript", {640, 640}, 0.5f, 0.7f, 0.5f),
+        reid_("/home/jw/track_ros2/src/detect/models/ReID_resnet50_ibn_a.torchscript", true),
         fps_(0.0), frame_count_(0), collecting_features(false), has_target_feature(false)
     {
         RCLCPP_INFO(get_logger(), "Hello, DETECTOR!");
@@ -25,7 +25,6 @@ namespace detect
             "/color/camera_info", 10, std::bind(&Detect::camera_info_callback, this, std::placeholders::_1));
 
         detector_pose_pub_ = create_publisher<geometry_msgs::msg::PointStamped>("/tracking/raw_pose", 10);
-        
         cv::namedWindow("Detection Result", cv::WINDOW_AUTOSIZE);
     }
 
@@ -36,7 +35,7 @@ namespace detect
 
 
     void Detect::rgb_raw_callback(const sensor_msgs::msg::Image::SharedPtr msg)
-    {
+    {   
         auto current_time = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_frame_time_);
         last_frame_time_ = current_time;
@@ -48,16 +47,26 @@ namespace detect
             frame_count_ = 0;
             fps_start_time_ = current_time;
         }
+        
 
-        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        raw_image = cv_ptr->image;
+        if (msg->width <= 0 || msg->height <= 0 || msg->data.empty()) {
+            RCLCPP_WARN(this->get_logger(), "Received an invalid image message, skipping frame.");
+            return; // 立即退出回调
+        }
+        try{
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+            raw_image = cv_ptr->image;
+        } catch (const cv_bridge::Exception& e) {
+            std::cout << "error" << std::endl;
+            RCLCPP_ERROR(this->get_logger(), "CV Bridge error: %s", e.what());
+            return;
+        }
 
         torch::Tensor detections = detector_.detectAndVisualize(raw_image);
 
         persons_results = detector_.keypoints;
 
         int best_match_index = -1; 
-
 
         if (has_target_feature && !persons_results.empty()) {
             float min_distance = std::numeric_limits<float>::max();
@@ -68,7 +77,7 @@ namespace detect
             
             for (size_t i = 0; i < persons_results.size(); ++i) {
                 const auto& person = persons_results[i];
-                if (person.x < 0 || person.y < 0 || person.x + person.w > raw_image.cols || person.y + person.h > raw_image.rows) {
+                if (person.x < 0 || person.y < 0 || person.w < 0 || person.h < 0 || person.x + person.w > raw_image.cols || person.y + person.h > raw_image.rows) {
                     continue; 
                 }
                 cv::Mat person_img = raw_image(cv::Rect(person.x, person.y, person.w, person.h)).clone();

@@ -46,23 +46,23 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 # -------------- libtorch --------------
 # 手动设置CUDA路径（替换为你的实际路径）
-set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.9")
+set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.6")
 set(CMAKE_CUDA_COMPILER "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc")
 
 # 显式声明nvToolsExt库
-find_library(NVToolsExt_LIB libnvToolsExt.so PATHS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" REQUIRED)
+find_library(NVToolsExt_LIB libnvToolsExt.so PATHS "${CUDA_TOOLKIT_ROOT_DIR}/targets/aarch64-linux/lib" REQUIRED)
 add_library(CUDA::nvToolsExt SHARED IMPORTED)
 set_target_properties(CUDA::nvToolsExt PROPERTIES IMPORTED_LOCATION ${NVToolsExt_LIB})
 
-list(APPEND CMAKE_PREFIX_PATH "/home/ake/libtorch")
-set(Torch_DIR "/home/ake/libtorch/share/cmake/Torch")
+list(APPEND CMAKE_PREFIX_PATH "/home/jw/libtorch")
+set(Torch_DIR "/home/jw/libtorch/share/cmake/Torch")
 
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 include_directories(${TORCH_INCLUDE_DIRS})
 
 # 设置 rpath 以便在运行时找到 PyTorch 库
-set(CMAKE_INSTALL_RPATH "/home/ake/libtorch/lib")
+set(CMAKE_INSTALL_RPATH "/home/jw/libtorch/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # Include directories
