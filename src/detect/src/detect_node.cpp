@@ -67,13 +67,21 @@ namespace detect
             std::vector<size_t> valid_indices;
             
             for (size_t i = 0; i < persons_results.size(); ++i) {
-                const auto& person = persons_results[i];
-                if (person.x < 0 || person.y < 0 || person.x + person.w > raw_image.cols || person.y + person.h > raw_image.rows) {
-                    continue; 
+                auto person = persons_results[i];
+                // 边界修正
+                if (person.x < 0) person.x = 0;
+                if (person.y < 0) person.y = 0;
+                if (person.x >= raw_image.cols || person.y >= raw_image.rows) continue;
+                if (person.x + person.w > raw_image.cols) person.w = raw_image.cols - person.x;
+                if (person.y + person.h > raw_image.rows) person.h = raw_image.rows - person.y;
+                if (person.w <= 0 || person.h <= 0) continue;
+                // 再次检查ROI合法性
+                if (person.x >= 0 && person.y >= 0 && person.w > 0 && person.h > 0 &&
+                    person.x + person.w <= raw_image.cols && person.y + person.h <= raw_image.rows) {
+                    cv::Mat person_img = raw_image(cv::Rect(person.x, person.y, person.w, person.h)).clone();
+                    person_images.push_back(person_img);
+                    valid_indices.push_back(i);
                 }
-                cv::Mat person_img = raw_image(cv::Rect(person.x, person.y, person.w, person.h)).clone();
-                person_images.push_back(person_img);
-                valid_indices.push_back(i);
             }
             
             
@@ -84,11 +92,15 @@ namespace detect
                 for (size_t j = 0; j < batch_features.size(0); ++j) {
                     torch::Tensor feature = batch_features[j].unsqueeze(0);
                     float distance = torch::nn::functional::pairwise_distance(feature, target_feature).item<float>();
+                    std::cout << "distance: " << distance << std::endl;
                     if (distance < min_distance && distance < 1.0f) { 
                         min_distance = distance;
                         best_match_index = valid_indices[j];
                     }
                 }
+            }
+            else {
+                RCLCPP_WARN(get_logger(), "No valid person images found for feature matching.");
             }
 
             if (best_match_index != -1) {
@@ -96,8 +108,10 @@ namespace detect
                 cv::rectangle(raw_image, cv::Point(best_person.x, best_person.y), cv::Point(best_person.x + best_person.w, best_person.y + best_person.h), cv::Scalar(255, 0, 0), 5);
                 cv::putText(raw_image, "Target", cv::Point(best_person.x, best_person.y - 10), cv::FONT_HERSHEY_SIMPLEX, 3, cv::Scalar(255, 0, 0), 5);
                 target_position = cv::Point2f((best_person.kpt_5.x + best_person.kpt_6.x + best_person.kpt_11.x + best_person.kpt_12.x) / 4.0, (best_person.kpt_5.y + best_person.kpt_6.y + best_person.kpt_11.y + best_person.kpt_12.y) / 4.0);
+                cv::circle(raw_image, target_position, 10, cv::Scalar(0, 255, 0), -1);
             }
-        } else if (!has_target_feature && !persons_results.empty()) {
+        }
+        else if (!has_target_feature && !persons_results.empty()) {
             const auto& first_person = persons_results[0];
             if (first_person.x >= 0 && first_person.y >= 0 && 
                 first_person.x + first_person.w <= raw_image.cols && 
@@ -187,7 +201,6 @@ namespace detect
         cv::putText(raw_image, "Press 'R' to reset target", cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
 
         cv::Mat test_image = raw_image.clone(); 
-        cv::cvtColor(test_image, test_image, cv::COLOR_BGR2RGB);
         cv::imshow("Detection Result", test_image);
 
         handle_keyboard_input();
