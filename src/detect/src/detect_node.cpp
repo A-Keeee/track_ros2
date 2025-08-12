@@ -49,8 +49,7 @@ namespace detect
             fps_start_time_ = current_time;
         }
 
-        // 处理RGB图像
-        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
+        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         raw_image = cv_ptr->image;
 
         torch::Tensor detections = detector_.detectAndVisualize(raw_image);
@@ -188,12 +187,12 @@ namespace detect
         cv::putText(raw_image, "Press 'R' to reset target", cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
 
         cv::Mat test_image = raw_image.clone(); 
-        cv::cvtColor(test_image, test_image, cv::COLOR_RGB2BGR);
+        cv::cvtColor(test_image, test_image, cv::COLOR_BGR2RGB);
         cv::imshow("Detection Result", test_image);
 
         handle_keyboard_input();
 
-        auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", raw_image).toImageMsg();
+        auto result_msg = cv_bridge::CvImage(msg->header, "bgr8", raw_image).toImageMsg();
         result_image_pub_->publish(*result_msg);
     }
 
